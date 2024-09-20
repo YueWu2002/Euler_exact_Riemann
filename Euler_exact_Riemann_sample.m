@@ -1,6 +1,7 @@
-function [S_l, S_m, S_r, xx, rho_xx, u_xx, p_xx, a_xx] = Euler_exact_Riemann_sample(rho_l,u_l,p_l, rho_r,u_r,p_r, gamma, tol, xx_in)
-% 
-%   solve the exact Riemann problem of the 1D Euler equation (for ideal polytopic gas only) and compute the primitive variables at nodes xx at time T=1. 
+function [S_l,S_m,S_r, xx, rho_xx,u_xx,p_xx,a_xx] = Euler_exact_Riemann_sample(rho_l,u_l,p_l, rho_r,u_r,p_r, gamma, tol, xx_in)
+% [S_l,S_m,S_r, xx, rho_xx,u_xx,p_xx,a_xx] = Euler_exact_Riemann_sample(rho_l,u_l,p_l, rho_r,u_r,p_r, gamma, tol, xx_in)
+%   solve the exact Riemann problem of the 1D Euler equation (for ideal polytopic gas only) 
+%   and compute the physical quantities at nodes xx at time T=1. 
 %   Here, S_l, S_m, S_r are the wave velocities. (If there is a rarefaction fan, the output is the min and max of its velocity.)
 %   The output xx is refined so that critical points are included. 
 % 

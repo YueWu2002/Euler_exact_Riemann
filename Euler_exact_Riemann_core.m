@@ -1,19 +1,22 @@
 function [S_l,S_r, rho_l,rho_ml,rho_mr,rho_r, u_l,u_m,u_r, p_l,p_m,p_r, a_l,a_ml,a_mr,a_r] = Euler_exact_Riemann_core(rho_l,u_l,p_l, rho_r,u_r,p_r, gamma, tol)
 % [S_l,S_r, rho_l,rho_ml,rho_mr,rho_r, u_l,u_m,u_r, p_l,p_m,p_r, a_l,a_ml,a_mr,a_r] 
 % = Euler_exact_Riemann_core(rho_l,u_l,p_l, rho_r,u_r,p_r, gamma, tol) 
-%   
 %   solve the exact Riemann problem of the 1D Euler equation (for ideal polytopic gas only) 
-%   Vacuum states are supported. Zero temperature cases are not supported. 
+%   
+%   Vacuum states are supported. Zero temperature states are not supported. 
+%   The physical quantities are: 
+%       rho: density, u: velocity, p: pressure, a: sonic speed 
+%   The equation of state (EOS) is: p = (gamma-1)*rho*e, where e is the internal energy per unit mass 
 % 
 % input: 
-%   rho_l, u_l, p_l:    the density, velocity and pressure on the x<0 side
-%   rho_r, u_r, p_r:    the density, velocity and pressure on the x>0 side
-%   gamma:              the specific heat ratio
-%   tol:                relative tolerance in the Newton-Raphson iteration
+%   rho_l, u_l, p_l:    the density, velocity and pressure on the x<0 side 
+%   rho_r, u_r, p_r:    the density, velocity and pressure on the x>0 side 
+%   gamma:              the specific heat ratio 
+%   tol:                relative tolerance in the Newton-Raphson iteration 
 % 
 % output: 
 %   S_l:                the 1-rarefaction speed range (if have size 2), or the 1-shock or 1-contact speed (if have size 1) 
-%   u_m:                the 2-contact speed or speed of the free boundary (in the presence of vacuum) 
+%   u_m:                the 2-contact speed or the speed of the free boundary (in the presence of vacuum) 
 %   S_r:                the 3-rarefaction speed range (if have size 2), or the 3-shock or 3-contact speed (if have size 1) 
 %   rho_l, u_l, p_l, a_l:   the quantities left to the 1-wave (vacuum correction may be applied) 
 %   rho_ml, u_m, p_m, a_ml: the quantities between the 1-wave and the 2-wave 
@@ -34,16 +37,16 @@ assert(isfloat(p_r) && isfinite(p_r) && p_r >= 0.0, 'Euler_exact_Riemann: invali
 assert(isfloat(gamma) && isfinite(gamma) && gamma > 1.0, 'Euler_exact_Riemann: invalid gamma input!');
 assert(isfloat(tol) && isfinite(tol) && tol > 0.0 && tol <= 1.0, 'Euler_exact_Riemann: invalid tol input!');
 
-% begin computation: pressure-based
-
 % pre-process vacuum cases (zero density) 
 if rho_l == 0.0
+    % according to the isentropic limit 
     p_l = 0.0;
-    a_l = 0.0; % according to the isentropic limit 
+    a_l = 0.0;
 end
 if rho_r == 0.0
+    % according to the isentropic limit 
     p_r = 0.0;
-    a_r = 0.0; % according to the isentropic limit 
+    a_r = 0.0;
 end
 
 % We rule out the cases where the density is zero on any side. 
@@ -56,7 +59,7 @@ if rho_l == 0.0 && rho_r == 0.0
     a_ml = 0.0;
     a_mr = 0.0;
 
-    % speed of free boundary 
+    % speed of the free boundary 
     u_m = 0.5*(u_l + u_r);
     if u_l < u_r
         % artificial rarefaction 
@@ -81,11 +84,11 @@ if rho_r == 0.0
 
     if p_l == 0.0
         a_l = 0.0;
-        u_m = u_l; % speed of free boundary 
+        u_m = u_l; % speed of the free boundary 
         S_l = u_l;
     else
         a_l = sqrt(gamma*p_l/rho_l);
-        u_m = u_l + (2.0/(gamma-1.0)) * a_l; % speed of free boundary 
+        u_m = u_l + (2.0/(gamma-1.0)) * a_l; % speed of the free boundary 
         S_l = [u_l - a_l, u_m]; % main rarefaction
     end
 
@@ -110,11 +113,11 @@ if rho_l == 0.0
 
     if p_r == 0.0
         a_r = 0.0;
-        u_m = u_r; % speed of free boundary 
+        u_m = u_r; % speed of the free boundary 
         S_r = u_r;
     else
         a_r = sqrt(gamma*p_r/rho_r);
-        u_m = u_r - (2.0/(gamma-1.0)) * a_r; % speed of free boundary 
+        u_m = u_r - (2.0/(gamma-1.0)) * a_r; % speed of the free boundary 
         S_r = [u_m, u_r + a_r]; % main rarefaction
     end
 
