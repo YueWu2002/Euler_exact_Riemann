@@ -7,7 +7,7 @@ T = {0.5, 0.3, 1e-5, 0.8, 0.07};
 
 for k = 1: 5
     xx = -1:0.001:1; % the x/t value of evaluation points
-    [S_l, S_m, S_r, xx, rho_xx, u_xx, p_xx] = Euler_exact_Riemann_sample(init_l{k}(1),init_l{k}(2),init_l{k}(3), init_r{k}(1),init_r{k}(2),init_r{k}(3), gamma, tol{k}, xx/T{k});
+    [S_l, S_m, S_r, xx, rho_xx, u_xx, p_xx, a_xx] = Euler_exact_Riemann_sample(init_l{k}(1),init_l{k}(2),init_l{k}(3), init_r{k}(1),init_r{k}(2),init_r{k}(3), gamma, tol{k}, xx/T{k});
 
     figure(k);
     subplot(2,3,1);
