@@ -14,7 +14,9 @@ for k = 1: 5
 
     plot(T{k}*xx, rho_xx, 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');
@@ -23,7 +25,9 @@ for k = 1: 5
     subplot(2,3,2);
     plot(T{k}*xx, u_xx, 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');
@@ -32,7 +36,9 @@ for k = 1: 5
     subplot(2,3,3);
     plot(T{k}*xx, p_xx, 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');
@@ -41,7 +47,9 @@ for k = 1: 5
     subplot(2,3,4);
     plot(T{k}*xx, u_xx + (2/(gamma-1.0))*sqrt(gamma*p_xx./rho_xx), 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');
@@ -50,7 +58,9 @@ for k = 1: 5
     subplot(2,3,5);
     plot(T{k}*xx, p_xx./rho_xx.^gamma, 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');
@@ -59,7 +69,9 @@ for k = 1: 5
     subplot(2,3,6);
     plot(T{k}*xx, u_xx - (2/(gamma-1.0))*sqrt(gamma*p_xx./rho_xx), 'LineWidth',1);
     hold on;
-    xline(T{k}*[S_l(:); S_m(:); S_r(:)], '--');
+    xline(T{k}*S_l(:), '--', '1-wave');
+    xline(T{k}*S_m(:), '--', '2-wave');
+    xline(T{k}*S_r(:), '--', '3-wave');
     hold off;
     grid on;
     xlabel('x');

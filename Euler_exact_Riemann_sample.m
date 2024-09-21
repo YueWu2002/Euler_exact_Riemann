@@ -29,9 +29,9 @@ for k = 1: numel(xx)
     elseif xx(k) < max(S_l)
         % left-rarefaction
         u_xx(k) = ((gamma-1.0)/(gamma+1.0))*u_l + (2.0/(gamma+1.0))*(xx(k) + a_l);
-        a_xx = u_xx(k) - xx(k);
-        rho_xx(k) = (((rho_l^gamma)*a_xx^2)/(gamma*p_l))^(1.0/(gamma-1.0));
-        p_xx(k) = rho_xx(k)*a_xx^2/gamma;
+        a_xx(k) = u_xx(k) - xx(k);
+        rho_xx(k) = (((rho_l^gamma)*a_xx(k)^2)/(gamma*p_l))^(1.0/(gamma-1.0));
+        p_xx(k) = rho_xx(k)*a_xx(k)^2/gamma;
     elseif xx(k) <= S_m
         % middle-left
         rho_xx(k) = rho_ml;
@@ -47,9 +47,9 @@ for k = 1: numel(xx)
     elseif xx(k) < max(S_r)
         % right-rarefaction
         u_xx(k) = ((gamma-1.0)/(gamma+1.0))*u_r + (2.0/(gamma+1.0))*(xx(k) - a_r);
-        a_xx = xx(k) - u_xx(k);
-        rho_xx(k) = (((rho_l^gamma)*a_xx^2)/(gamma*p_l))^(1.0/(gamma-1.0));
-        p_xx(k) = rho_xx(k)*a_xx^2/gamma;
+        a_xx(k) = xx(k) - u_xx(k);
+        rho_xx(k) = (((rho_l^gamma)*a_xx(k)^2)/(gamma*p_l))^(1.0/(gamma-1.0));
+        p_xx(k) = rho_xx(k)*a_xx(k)^2/gamma;
     else
         % right-most
         rho_xx(k) = rho_r;
