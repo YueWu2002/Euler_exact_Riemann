@@ -15,186 +15,197 @@ function [S_l,S_r, rho_l,rho_ml,rho_mr,rho_r, u_l,u_m,u_r, p_l,p_m,p_r, a_l,a_ml
 %   tol:                relative tolerance in the Newton-Raphson iteration 
 % 
 % output: 
-%   S_l:                the 1-rarefaction speed range (if have size 2), or the 1-shock or 1-contact speed (if have size 1) 
-%   u_m:                the 2-contact speed or the speed of the free boundary (in the presence of vacuum) 
-%   S_r:                the 3-rarefaction speed range (if have size 2), or the 3-shock or 3-contact speed (if have size 1) 
+%   S_l:                the 1-rarefaction speed range (size=2), or the 1-shock or 1-contact speed (size=1) 
+%   u_m:                the 2-contact speed (size=1), or the speed of the only free boundary in the presence of any vacuum (size=1), or the speed range of a vacuum fan (size=2)
+%   S_r:                the 3-rarefaction speed range (size=2), or the 3-shock or 3-contact speed (size=1) 
 %   rho_l, u_l, p_l, a_l:   the quantities left to the 1-wave (vacuum correction may be applied) 
 %   rho_ml, u_m, p_m, a_ml: the quantities between the 1-wave and the 2-wave 
 %   rho_mr, u_m, p_m, a_mr: the quantities between the 2-wave and the 3-wave 
 %   rho_r, u_r, p_r, a_r:   the quantities right to the 3-wave (vacuum correction may be applied) 
 % 
+% guaranteed relation:
+%   S_l(1) (< S_l(2)) <= u_m(1) (< u_m(2)) <= S_r(1) (< S_r(2))
+%
 % references:
 % [1] Eleuterio F. Toro (2009). Riemann Solvers and Numerical Methods for Fluid Dynamics: A Practical Introduction, 3rd eds. Springer-Verlag Berlin Heidelberg. 
+% 
+% author: Yue Wu (URL: https://yuewu2002.github.io/) (Email: yue_wu3@brown.edu)
 
 % check the inputs
 
-assert(isfloat(rho_l) && isfinite(rho_l) && rho_l >= 0.0, 'Euler_exact_Riemann: invalid rho_l input!');
-assert(isfloat(rho_r) && isfinite(rho_r) && rho_r >= 0.0, 'Euler_exact_Riemann: invalid rho_r input!');
-assert(isfloat(u_r) && isfinite(u_r), 'Euler_exact_Riemann: invalid u_r input!');
-assert(isfloat(u_l) && isfinite(u_l), 'Euler_exact_Riemann: invalid u_l input!');
-assert(isfloat(p_l) && isfinite(p_l) && p_l >= 0.0, 'Euler_exact_Riemann: invalid p_l input!');
-assert(isfloat(p_r) && isfinite(p_r) && p_r >= 0.0, 'Euler_exact_Riemann: invalid p_r input!');
-assert(isfloat(gamma) && isfinite(gamma) && gamma > 1.0, 'Euler_exact_Riemann: invalid gamma input!');
-assert(isfloat(tol) && isfinite(tol) && tol > 0.0 && tol <= 1.0, 'Euler_exact_Riemann: invalid tol input!');
+assert(isfloat(rho_l) && isfinite(rho_l) && rho_l >= 0.0, 'Euler_exact_Riemann_core: invalid rho_l input!');
+assert(isfloat(rho_r) && isfinite(rho_r) && rho_r >= 0.0, 'Euler_exact_Riemann_core: invalid rho_r input!');
+assert(isfloat(u_r) && isfinite(u_r), 'Euler_exact_Riemann_core: invalid u_r input!');
+assert(isfloat(u_l) && isfinite(u_l), 'Euler_exact_Riemann_core: invalid u_l input!');
+assert(isfloat(p_l) && isfinite(p_l) && p_l >= 0.0, 'Euler_exact_Riemann_core: invalid p_l input!');
+assert(isfloat(p_r) && isfinite(p_r) && p_r >= 0.0, 'Euler_exact_Riemann_core: invalid p_r input!');
+assert(isfloat(gamma) && isfinite(gamma) && gamma > 1.0, 'Euler_exact_Riemann_core: invalid gamma input!');
+assert(isfloat(tol) && isfinite(tol) && tol > 0.0 && tol <= 1.0, 'Euler_exact_Riemann_core: invalid tol input!');
 
 % pre-process vacuum cases (zero density) 
 if rho_l == 0.0
     % according to the isentropic limit 
     p_l = 0.0;
     a_l = 0.0;
+else
+    % sonic speed
+    a_l = sqrt(gamma*p_l/rho_l);
 end
 if rho_r == 0.0
     % according to the isentropic limit 
     p_r = 0.0;
     a_r = 0.0;
+else
+    % sonic speed
+    a_r = sqrt(gamma*p_r/rho_r);
 end
 
-% We rule out the cases where the density is zero on any side. 
+% left-most speed of the left rarefaction
+S_lmin = u_l - a_l;
 
-% both vacuum states
-if rho_l == 0.0 && rho_r == 0.0
+% right-most speed of the left rarefaction with a zero-pressure right end
+S_lmax = u_l + (2.0/(gamma-1.0)) * a_l;
+
+% right-most speed of the right rarefaction
+S_rmax = u_r + a_r;
+
+% left-most speed of the right rarefaction part with a zero-pressure left end
+S_rmin = u_r - (2.0/(gamma-1.0)) * a_r;
+
+% We rule out the cases where the density is zero anywhere in the solution. 
+% (either in the left-initial value or the right-initial value, 
+%  or GENERATED in the NON-TRIVIAL middle states from initial states with positive densities)
+if rho_l == 0.0 || rho_r == 0.0 || (rho_l > 0.0 && rho_r > 0.0 && S_lmax < S_rmin)
+
+    % vacuum middle states
     rho_ml = 0.0;
     rho_mr = 0.0;
     p_m = 0.0;
     a_ml = 0.0;
     a_mr = 0.0;
 
-    % speed of the free boundary 
-    u_m = 0.5*(u_l + u_r);
-    if u_l < u_r
-        % artificial rarefaction 
-        S_l = [u_l, u_m];
-        S_r = [u_m, u_r];
+    if (rho_l == 0.0 && rho_r == 0.0) || (rho_l > 0.0 && rho_r > 0.0 && S_lmax < S_rmin)
+        % both of the initial states are vacuum, or non-vacuum initial states generate a vacuum middle state (STRICT inequality for the 2nd case)
+
+        if S_lmax < S_rmin
+            % Case 1. Burgers' rarefaction (when rho_l == 0.0 && rho_r == 0.0)
+            % Case 2. speeds of the free boundaries (when rho_l > 0.0 && rho_r > 0.0 && S_lmax < S_rmin)
+            u_m = [S_lmax, S_rmin]; % THE ONLY CASE WHERE THERE ARE TWO VALUES!!!
+        else
+            % Case 1. Burgers' shock or contact (when rho_l == 0.0 && rho_r == 0.0)
+            % Case 2. speed of the free boundary (when rho_l > 0.0 && rho_r > 0.0 && S_lmax < S_rmin)
+            u_m = 0.5*(S_lmax + S_rmin);
+        end
+    elseif rho_r == 0.0
+        % a non-vacuum left state and a vacuum right initial state
+
+        % speed of the free boundary
+        u_m = S_lmax;
     else
-        % artificial shock 
-        S_l = u_m;
-        S_r = u_m;
+        % a non-vacuum right state and a vacuum left initial state
+
+        % speed of the free boundary
+        u_m = S_rmin;
     end
 
+    if S_lmin < u_m(1)
+        % rarefaction
+        S_l = [S_lmin, u_m(1)];
+    else
+        % shock or contact
+        S_l = u_m(1);
+    end
+
+    if S_rmax > u_m(end)
+        % rarefaction
+        S_r = [u_m(end), S_rmax];
+    else
+        % shock or contact
+        S_r = u_m(end);
+    end
+
+    disp('Euler_exact_Riemann_core: vacuum detected! Analytical solution applied.');
     return;
 end
 
-% vacuum right state 
-if rho_r == 0.0
-    rho_ml = 0.0;
-    rho_mr = 0.0;
-    p_m = 0.0;
-    a_ml = 0.0;
-    a_mr = 0.0;
+% From now on, the densities are POSITIVE ANYWHERE in the solution. 
 
-    if p_l == 0.0
-        a_l = 0.0;
-        u_m = u_l; % speed of the free boundary 
+% Notice that on the two ends of a rarefaction or contact wave, if one has zero pressure, then the other one also has zero pressure. 
+if p_l == 0.0 && p_r == 0.0
+    if u_l <= u_r
+        % In this case, we have already ruled out the subcase where u_l < u_r where a NON-TRIVIAL region of vacuum will be generated. 
+        % We use '<=' here for the sake of stability. 
+
+        % three contact waves with p_m == 0 (u_l == u_r)
         S_l = u_l;
-    else
-        a_l = sqrt(gamma*p_l/rho_l);
-        u_m = u_l + (2.0/(gamma-1.0)) * a_l; % speed of the free boundary 
-        S_l = [u_l - a_l, u_m]; % main rarefaction
-    end
-
-    if u_m < u_r
-        % artificial rarefaction 
-        S_r = [u_m, u_r];
-    else
-        % artificial shock 
-        S_r = u_m;
-    end
-
-    return;
-end
-
-% vacuum left state
-if rho_l == 0.0
-    rho_ml = 0.0;
-    rho_mr = 0.0;
-    p_m = 0.0;
-    a_ml = 0.0;
-    a_mr = 0.0;
-
-    if p_r == 0.0
-        a_r = 0.0;
-        u_m = u_r; % speed of the free boundary 
         S_r = u_r;
+        u_m = 0.5*(S_l + S_r); % for stability
+
+        rho_ml = rho_l;
+        rho_mr = rho_r;
+        p_m = 0.0;
+        a_ml = a_l;
+        a_mr = a_r;
+
+        disp('Euler_exact_Riemann_core: inexact initialization! Iteration needed.');
+        return;
     else
-        a_r = sqrt(gamma*p_r/rho_r);
-        u_m = u_r - (2.0/(gamma-1.0)) * a_r; % speed of the free boundary 
-        S_r = [u_m, u_r + a_r]; % main rarefaction
+        % two shock waves with p_m > 0.0
+        p = sqrt(0.5*(gamma+1.0)) * (u_l - u_r) / (1.0/sqrt(rho_l) + 1.0/sqrt(rho_r));
+        should_correct = false;
     end
-
-    if u_l < u_m
-        % artificial rarefaction 
-        S_l = [u_l, u_m];
+elseif (p_l == 0.0) || (p_r == 0.0)
+    % at least one is positive, which implies p_m > 0.0
+    % initial guess
+    p = 0.5*max(p_l, p_r);
+    should_correct = true;
+else
+    % p_l > 0.0 && p_r > 0.0
+    % two-rarefaction initialization (validity and positivity guaranteed if p_l > 0.0 && p_r > 0.0)
+    p = ((a_l + a_r - 0.5*(gamma-1.0)*(u_r - u_l))/(a_l/p_l^((gamma-1.0)/(2*gamma)) + a_r/p_r^((gamma-1.0)/(2*gamma))))^(2*gamma/(gamma-1.0)); % will be more rebost than the one below (e.x. the double rarefaction problem)
+    % p = ((0.5*(gamma-1.0)*(S_lmax - S_rmin))/(a_l/p_l^((gamma-1.0)/(2*gamma)) + a_r/p_r^((gamma-1.0)/(2*gamma))))^(2*gamma/(gamma-1.0));
+    if p <= p_l && p <= p_r
+        should_correct = false;
     else
-        % artificial shock 
-        S_l = u_m;
-    end
-
-    return;
-end
-
-% From now on, the densities are positive from both sides. 
-
-% We don't allow zero pressure when the density is positive, because it means absolute zero temperature. 
-
-assert(p_l > 0.0, 'Euler_exact_Riemann: invalid p_l input! Absolute zero temperature detected!');
-assert(p_r > 0.0, 'Euler_exact_Riemann: invalid p_r input! Absolute zero temperature detected!');
-
-% From now on, the densities and pressures are positive on both sides. 
-
-a_l = sqrt(gamma*p_l/rho_l);
-a_r = sqrt(gamma*p_r/rho_r);
-
-% We need to rule out the case where vacuum is generated in the middle states. 
-
-% generation of vaccum 
-if 0.5*(gamma-1.0)*(u_r - u_l) >= a_l + a_r
-    % two full rarefaction fans 
-    S_l = [u_l - a_l, u_l + (2.0/(gamma-1.0)) * a_l];
-    S_r = [u_r - (2.0/(gamma-1.0)) * a_r, u_r + a_r];
-    u_m = 0.5*(S_l(2) + S_r(1));
-    S_l(2) = min(S_l(2), u_m);
-    S_r(1) = max(S_r(1), u_m);
-
-    rho_ml = 0.0;
-    rho_mr = 0.0;
-    p_m = 0.0;
-    a_ml = 0.0;
-    a_mr = 0.0;
-    return;
-end
-
-% From now on, the density and pressure are positive anywhere in the solution. 
-
-% Two-rarefaction initialization (positivity guaranteed)
-p = ((a_l + a_r - 0.5*(gamma-1.0)*(u_r - u_l))/(a_l/p_l^((gamma-1.0)/(2*gamma)) + a_r/p_r^((gamma-1.0)/(2*gamma))))^(2*gamma/(gamma-1.0));
-
-% use an iteration to enforce that p grows in the next iteration, according to the characteristics of Newton-Raphson iterations on concave functions
-while F(p, rho_l,u_l,p_l,a_l, rho_r,u_r,p_r,a_r, gamma) > 0.0
-    p = 0.8*p;
-end
-
-% Newton-Raphson iterations on concave functions, guaranteed to converge as long as p keeps positive
-flag = true;
-while flag
-    if p <= 0.0
-        error('Euler_exact_Riemann_kernel: iteration error: non-positive pressure!');
-    end
-
-    [Fv, dF] = F(p, rho_l,u_l,p_l,a_l, rho_r,u_r,p_r,a_r, gamma);
-    delta_p = Fv/dF;
-    p_new = p - delta_p;
-    rel_chg = abs(delta_p)/abs(0.5*(p + p_new));
-    p = p_new;
-
-    disp(rel_chg);
-    if rel_chg < tol
-        flag = false;
+        should_correct = true;
     end
 end
+
+if should_correct
+    disp('Euler_exact_Riemann_core: inexact initialization! Iteration needed.');
+
+    % use an iteration to enforce that p grows in the next iteration so that it won't be non-positive in the future, 
+    % because the Newton-Raphson iterations on concave functions will provide a monotone sequence 
+    while F(p, rho_l,u_l,p_l,a_l, rho_r,u_r,p_r,a_r, gamma) > 0.0
+        p = 0.8*p;
+    end
+
+    % Newton-Raphson iterations on concave functions, guaranteed to converge as long as p keeps positive
+    while true
+        if p <= 0.0
+            error('Euler_exact_Riemann_core: iteration error: non-positive pressure!');
+        end
+
+        [Fv, dF] = F(p, rho_l,u_l,p_l,a_l, rho_r,u_r,p_r,a_r, gamma);
+        delta_p = Fv/dF;
+        p_new = p - delta_p;
+        rel_chg = abs(delta_p)/abs(0.5*(p + p_new));
+        p = p_new;
+
+        disp(['Relative change: ', num2str(rel_chg)]);
+        if rel_chg < tol
+            break;
+        end
+    end
+else
+    disp('Euler_exact_Riemann_core: exact initialization! No iteration needed.');
+end
+fprintf('\n');
+
 p_m = p;
-[fl, ~] = f(p, rho_l, p_l, a_l, gamma);
-[fr, ~] = f(p, rho_r, p_r, a_r, gamma);
-u_m = 0.5*(u_l + u_r) + 0.5*(fr - fl);
+[fl, ~] = f(p_m, rho_l, p_l, a_l, gamma);
+[fr, ~] = f(p_m, rho_r, p_r, a_r, gamma);
+u_m = 0.5*((u_l - fl) + (u_r + fr)); % for stability
 
 if p_m >= p_l
     % left-shock
@@ -210,7 +221,7 @@ else
     theta = p_m/p_l;
     rho_ml = rho_l*(theta^(1.0/gamma));
     a_ml = sqrt(gamma*p_m/rho_ml);
-    S_l = [u_l - a_l, u_m - a_ml];
+    S_l = [S_lmin, u_m - a_ml];
 end
 
 if p_m >= p_r
@@ -227,7 +238,7 @@ else
     theta = p_m/p_r;
     rho_mr = rho_r*(theta^(1.0/gamma));
     a_mr = sqrt(gamma*p_m/rho_mr);
-    S_r = [u_m + a_mr, u_r + a_r];
+    S_r = [u_m + a_mr, S_rmax];
 end
 
 end
