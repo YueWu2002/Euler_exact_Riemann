@@ -8,7 +8,7 @@ Support vacuum and zero-temperature/pressure inputs and outputs. Available to ou
 
 ## Structure
 
-1. `Euler_exact_Riemann_core.m`: The core function to compute some parameters that cahracterizes the solution, which can then used to analytically compute the solution at any point.
+1. `Euler_exact_Riemann_core.m`: The core function to compute some parameters that characterizes the solution, which can then be used to compute the solution at any point analytically.
 2. `Euler_exact_Riemann_sample.m`: The sampling function, which evaluates the exact solution at user-input positions (mainly for the purpose of plotting).
 3. `test.m`: A simple script containing several different test cases.
 4. Folder `examples`: Contain some figure outputs that should be expected from running the `test.m`. 
